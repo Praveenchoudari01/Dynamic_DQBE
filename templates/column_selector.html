@@ -1,35 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Select Tables and Columns</title>
-    <script>
-        function toggleColumns(id) {
-            let block = document.getElementById("block-" + id);
-            block.style.display = block.style.display === "none" ? "block" : "none";
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background-color: #f9f9f9;
         }
-    </script>
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .table-container {
+            max-width: 800px;
+            margin: auto;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-box {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+
+        .table-box h4 {
+            margin: 0 0 10px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .columns {
+            display: none;
+            padding-left: 20px;
+        }
+
+        .columns label {
+            display: block;
+            margin: 3px 0;
+        }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            margin-top: 30px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+
+    </style>
 </head>
 <body>
-    <h2>Select Columns from Tables</h2>
+    <h2>🧠 Select Tables & Columns</h2>
+
     <form method="POST" action="/submit">
-        <select multiple size="5" onchange="Array.from(this.selectedOptions).forEach(opt => toggleColumns(opt.value))">
-            {% for table in schema %}
-                <option value="{{ table }}">{{ table }}</option>
+        <div class="table-container">
+            {% for table, details in schema.items() %}
+                <div class="table-box">
+                    <h4 onclick="toggleColumns('{{ table }}')">📁 {{ table }}</h4>
+                    <div id="columns-{{ table }}" class="columns">
+                        {% for col in details['columns'] %}
+                            <label>
+                                <input type="checkbox" name="columns" value="{{ table }}.{{ col }}">
+                                {{ col }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
             {% endfor %}
-        </select>
 
-        {% for table, info in schema.items() %}
-            <div id="block-{{ table }}" style="display: none; margin: 10px 0 20px;">
-                <strong>{{ table }}</strong><br>
-                {% for column in info.columns %}
-                    <label>
-                        <input type="checkbox" name="columns" value="{{ table }}.{{ column }}"> {{ column }}
-                    </label><br>
-                {% endfor %}
-            </div>
-        {% endfor %}
-
-        <br><button type="submit">Submit</button>
+            <button type="submit" class="submit-btn">🚀 Submit</button>
+        </div>
     </form>
+
+    <script>
+        function toggleColumns(tableName) {
+            const el = document.getElementById('columns-' + tableName);
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
 </body>
 </html>

@@ -5,52 +5,79 @@
     <title>Select Tables and Columns</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            padding: 30px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            padding: 40px;
             color: #333;
         }
 
         h2 {
             text-align: center;
             color: #2c3e50;
+            margin-bottom: 30px;
         }
 
         form {
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background: #ffffff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
         .table-group {
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 5px solid #3498db;
+            border-radius: 6px;
         }
 
         .table-label {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
+            color: #2c3e50;
             cursor: pointer;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .table-label input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
         }
 
         .column-list {
-            margin-top: 10px;
-            margin-left: 20px;
+            margin-left: 25px;
             display: none;
+            padding-top: 8px;
+        }
+
+        .column-list label {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 8px;
+            font-size: 15px;
+            color: #555;
+        }
+
+        .column-list input[type="checkbox"] {
+            margin-right: 5px;
+            transform: scale(1.1);
         }
 
         input[type="submit"] {
             background: #3498db;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 30px;
             font-size: 16px;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 6px;
+            display: block;
+            margin: 30px auto 0 auto;
+            transition: background 0.3s;
         }
 
         input[type="submit"]:hover {
@@ -64,8 +91,8 @@
     <form method="POST" action="/submit_tables">
         {% for table in tables %}
             <div class="table-group">
-                <label class="table-label">
-                    <input type="checkbox" name="tables" value="{{ table }}" onchange="toggleColumns('{{ table }}')">
+                <label class="table-label" onclick="toggleColumns('{{ table }}')">
+                    <input type="checkbox" name="tables" value="{{ table }}">
                     {{ table }}
                 </label>
 
@@ -73,20 +100,19 @@
                     {% for col in schema[table]['columns'] %}
                         <label>
                             <input type="checkbox" name="columns" value="{{ table }}.{{ col }}"> {{ col }}
-                        </label><br>
+                        </label>
                     {% endfor %}
                 </div>
             </div>
         {% endfor %}
 
-        <br>
-        <input type="submit" value="Submit Selection">
+        <input type="submit" value="🚀 Submit Selection">
     </form>
 
     <script>
         function toggleColumns(table) {
             const section = document.getElementById('columns-' + table);
-            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+            section.style.display = section.style.display === 'block' ? 'none' : 'block';
         }
     </script>
 </body>

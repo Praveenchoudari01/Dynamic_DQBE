@@ -1,61 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Select Tables</title>
+    <meta charset="UTF-8">
+    <title>Select Tables and Columns</title>
     <style>
-        #columns {
-            margin-top: 20px;
-            background: #eef;
-            padding: 10px;
-            border: 1px solid #ccc;
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 30px;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        form {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .table-group {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .table-label {
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .column-list {
+            margin-top: 10px;
+            margin-left: 20px;
+            display: none;
+        }
+
+        input[type="submit"] {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        input[type="submit"]:hover {
+            background: #2980b9;
         }
     </style>
 </head>
 <body>
-    <h2>Select Tables</h2>
+    <h2>🧩 Select Tables and Columns</h2>
 
     <form method="POST" action="/submit_tables">
-        <label for="tables">Tables:</label><br>
-        <select name="tables" id="tables" multiple size="10">
-            {% for table in tables %}
-                <option value="{{ table }}">{{ table }}</option>
-            {% endfor %}
-        </select>
-        <br><br>
-        <button type="submit">Submit</button>
+        {% for table in tables %}
+            <div class="table-group">
+                <label class="table-label">
+                    <input type="checkbox" name="tables" value="{{ table }}" onchange="toggleColumns('{{ table }}')">
+                    {{ table }}
+                </label>
+
+                <div id="columns-{{ table }}" class="column-list">
+                    {% for col in schema[table]['columns'] %}
+                        <label>
+                            <input type="checkbox" name="columns" value="{{ table }}.{{ col }}"> {{ col }}
+                        </label><br>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <br>
+        <input type="submit" value="Submit Selection">
     </form>
 
-    <div id="columns">
-        <strong>Selected Table Columns Will Appear Here</strong>
-    </div>
-
-    <hr>
-    <h3>Join Graph</h3>
-    <pre style="background:#f8f8f8; padding:10px; border:1px solid #ccc; border-radius:5px;">
-{{ join_graph | tojson(indent=4) }}
-    </pre>
-
     <script>
-        const schema = {{ schema | tojson }};
-        const selectBox = document.getElementById("tables");
-        const columnDisplay = document.getElementById("columns");
-
-        selectBox.addEventListener("change", () => {
-            const selected = Array.from(selectBox.selectedOptions).map(opt => opt.value);
-            columnDisplay.innerHTML = ""; // Clear previous
-
-            if (selected.length === 0) {
-                columnDisplay.innerHTML = "<strong>No table selected</strong>";
-                return;
-            }
-
-            selected.forEach(table => {
-                const columns = schema[table]?.columns || [];
-                const section = document.createElement("div");
-                section.innerHTML = `<strong>${table}:</strong> ${columns.join(", ")}`;
-                columnDisplay.appendChild(section);
-            });
-        });
+        function toggleColumns(table) {
+            const section = document.getElementById('columns-' + table);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        }
     </script>
 </body>
 </html>

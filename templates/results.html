@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Selected Results</title>
+</head>
+<body>
+    <h3>Selected Tables:</h3>
+    <ul>
+        {% for table in tables %}
+            <li>{{ table }}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Selected Columns:</h3>
+    <ul>
+        {% for col in columns %}
+            <li>{{ col }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="/">🔁 Start Over</a>
+</body>
+</html>

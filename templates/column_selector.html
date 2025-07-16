@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Tables and Columns</title>
+    <script>
+        function toggleColumns(id) {
+            let block = document.getElementById("block-" + id);
+            block.style.display = block.style.display === "none" ? "block" : "none";
+        }
+    </script>
+</head>
+<body>
+    <h2>Select Columns from Tables</h2>
+    <form method="POST" action="/submit">
+        <select multiple size="5" onchange="Array.from(this.selectedOptions).forEach(opt => toggleColumns(opt.value))">
+            {% for table in schema %}
+                <option value="{{ table }}">{{ table }}</option>
+            {% endfor %}
+        </select>
+
+        {% for table, info in schema.items() %}
+            <div id="block-{{ table }}" style="display: none; margin: 10px 0 20px;">
+                <strong>{{ table }}</strong><br>
+                {% for column in info.columns %}
+                    <label>
+                        <input type="checkbox" name="columns" value="{{ table }}.{{ column }}"> {{ column }}
+                    </label><br>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <br><button type="submit">Submit</button>
+    </form>
+</body>
+</html>

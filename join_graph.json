@@ -1,0 +1,75 @@
+{
+    "clients": {
+        "department": "clients.client_id = department.client_id",
+        "devices": "clients.client_id = devices.client_id",
+        "levels": "clients.client_id = levels.client_id",
+        "module": "clients.client_id = module.client_id",
+        "questions": "clients.client_id = questions.client_id",
+        "users": "clients.client_id = users.client_id",
+        "viewer": "clients.client_id = viewer.client_id",
+        "viewer_answers": "clients.client_id = viewer_answers.client_id",
+        "viewer_session": "clients.client_id = viewer_session.client_id"
+    },
+    "department": {
+        "clients": "department.client_id = clients.client_id",
+        "users": "department.updated_by = users.id"
+    },
+    "users": {
+        "clients": "users.client_id = clients.client_id",
+        "users": "users.updated_by = users.id",
+        "user_type": "users.user_type_id = user_type.id",
+        "viewer": "users.id = viewer.created_by",
+        "viewer_answers": "users.id = viewer_answers.created_by",
+        "viewer_session": "users.id = viewer_session.created_by"
+    },
+    "devices": {
+        "clients": "devices.client_id = clients.client_id",
+        "users": "devices.updated_by = users.id"
+    },
+    "levels": {
+        "clients": "levels.client_id = clients.client_id",
+        "users": "levels.updated_by = users.id",
+        "module": "levels.module_id = module.id",
+        "questions": "levels.id = questions.level_id",
+        "viewer_answers": "levels.id = viewer_answers.level_id",
+        "viewer_session": "levels.id = viewer_session.last_level_id"
+    },
+    "module": {
+        "clients": "module.client_id = clients.client_id",
+        "users": "module.updated_by = users.id",
+        "viewer_answers": "module.id = viewer_answers.module_id",
+        "viewer_session": "module.id = viewer_session.last_module_id"
+    },
+    "questions": {
+        "clients": "questions.client_id = clients.client_id",
+        "users": "questions.updated_by = users.id",
+        "levels": "questions.level_id = levels.id",
+        "viewer_answers": "questions.id = viewer_answers.question_id",
+        "viewer_session": "questions.id = viewer_session.last_question_id"
+    },
+    "user_type": {
+        "users": "user_type.id = users.user_type_id"
+    },
+    "viewer": {
+        "clients": "viewer.client_id = clients.client_id",
+        "users": "viewer.updated_by = users.id",
+        "viewer_answers": "viewer.id = viewer_answers.viewer_id",
+        "viewer_session": "viewer.id = viewer_session.viewer_id"
+    },
+    "viewer_answers": {
+        "clients": "viewer_answers.client_id = clients.client_id",
+        "users": "viewer_answers.updated_by = users.id",
+        "levels": "viewer_answers.level_id = levels.id",
+        "module": "viewer_answers.module_id = module.id",
+        "questions": "viewer_answers.question_id = questions.id",
+        "viewer": "viewer_answers.viewer_id = viewer.id"
+    },
+    "viewer_session": {
+        "clients": "viewer_session.client_id = clients.client_id",
+        "users": "viewer_session.updated_by = users.id",
+        "levels": "viewer_session.last_level_id = levels.id",
+        "module": "viewer_session.last_module_id = module.id",
+        "questions": "viewer_session.last_question_id = questions.id",
+        "viewer": "viewer_session.viewer_id = viewer.id"
+    }
+}

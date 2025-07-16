@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Tables</title>
+    <style>
+        #columns {
+            margin-top: 20px;
+            background: #eef;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h2>Select Tables</h2>
+
+    <form method="POST" action="/submit_tables">
+        <label for="tables">Tables:</label><br>
+        <select name="tables" id="tables" multiple size="10">
+            {% for table in tables %}
+                <option value="{{ table }}">{{ table }}</option>
+            {% endfor %}
+        </select>
+        <br><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <div id="columns">
+        <strong>Selected Table Columns Will Appear Here</strong>
+    </div>
+
+    <hr>
+    <h3>Join Graph</h3>
+    <pre style="background:#f8f8f8; padding:10px; border:1px solid #ccc; border-radius:5px;">
+{{ join_graph | tojson(indent=4) }}
+    </pre>
+
+    <script>
+        const schema = {{ schema | tojson }};
+        const selectBox = document.getElementById("tables");
+        const columnDisplay = document.getElementById("columns");
+
+        selectBox.addEventListener("change", () => {
+            const selected = Array.from(selectBox.selectedOptions).map(opt => opt.value);
+            columnDisplay.innerHTML = ""; // Clear previous
+
+            if (selected.length === 0) {
+                columnDisplay.innerHTML = "<strong>No table selected</strong>";
+                return;
+            }
+
+            selected.forEach(table => {
+                const columns = schema[table]?.columns || [];
+                const section = document.createElement("div");
+                section.innerHTML = `<strong>${table}:</strong> ${columns.join(", ")}`;
+                columnDisplay.appendChild(section);
+            });
+        });
+    </script>
+</body>
+</html>

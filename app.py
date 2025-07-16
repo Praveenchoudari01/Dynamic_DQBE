@@ -53,6 +53,7 @@ def build_join_graph_and_schema(database):
     return join_graph_json, schema_json
 
 
+
 @app.route("/", methods=["GET", "POST"])
 def select_database():
     if request.method == "POST":

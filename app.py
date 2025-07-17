@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 join_graph = {}
 schema_info = {}
-current_db = None  # 🔑 holds selected DB name across requests
+current_db = None
 
 # ---------- Utility Functions ----------
 
@@ -35,7 +35,7 @@ def build_join_graph_and_schema(database):
             try:
                 result = conn.execute(text(f"SELECT COUNT(*) FROM `{table_name}`"))
                 if result.scalar() == 0:
-                    continue  # skip empty tables
+                    continue
 
                 schema_json[table_name] = {
                     "columns": [col["name"] for col in inspector.get_columns(table_name)]
@@ -45,12 +45,17 @@ def build_join_graph_and_schema(database):
                 fks = inspector.get_foreign_keys(table_name)
                 for fk in fks:
                     referred_table = fk["referred_table"]
-                    from_col = fk["constrained_columns"][0]
-                    to_col = fk["referred_columns"][0]
+                    from_cols = fk["constrained_columns"]
+                    to_cols = fk["referred_columns"]
 
-                    join_graph_json[table_name][referred_table] = f"{table_name}.{from_col} = {referred_table}.{to_col}"
-                    join_graph_json.setdefault(referred_table, {})
-                    join_graph_json[referred_table][table_name] = f"{referred_table}.{to_col} = {table_name}.{from_col}"
+                    conditions = []
+                    for from_col, to_col in zip(from_cols, to_cols):
+                        conditions.append(f"{table_name}.{from_col} = {referred_table}.{to_col}")
+                    join_condition = " AND ".join(conditions)
+
+                    join_graph_json.setdefault(table_name, {}).setdefault(referred_table, []).append(join_condition)
+                    join_graph_json.setdefault(referred_table, {}).setdefault(table_name, []).append(join_condition)
+
             except Exception as e:
                 print(f"Skipping table `{table_name}` due to error: {e}")
 
@@ -61,24 +66,20 @@ def generate_joins(tables, join_graph):
         return []
 
     base_table = tables[0]
-    needed_tables = set(tables[1:])
     visited = set()
     queue = deque()
     parent = {}
-    edge_map = {}
-
     queue.append(base_table)
     visited.add(base_table)
     parent[base_table] = None
 
     while queue:
         current = queue.popleft()
-        for neighbor, condition in join_graph.get(current, {}).items():
+        for neighbor in join_graph.get(current, {}):
             if neighbor not in visited:
                 visited.add(neighbor)
                 queue.append(neighbor)
                 parent[neighbor] = current
-                edge_map[(current, neighbor)] = condition
 
     joins = []
     for table in tables[1:]:
@@ -94,7 +95,8 @@ def generate_joins(tables, join_graph):
         path.reverse()
 
         for a, b in path:
-            condition = join_graph[a][b] if b in join_graph[a] else join_graph[b][a]
+            conditions = join_graph[a][b] if b in join_graph[a] else join_graph[b][a]
+            condition = ' AND '.join(conditions) if isinstance(conditions, list) else conditions
             joins.append((b, condition))
 
     return [f"JOIN {table} ON {condition}" for table, condition in joins]
@@ -152,7 +154,7 @@ def select_database():
         dbname = request.form.get("database")
         global join_graph, schema_info, current_db
         join_graph, schema_info = build_join_graph_and_schema(dbname)
-        current_db = dbname  # 🔑 store selected DB name globally
+        current_db = dbname
         return redirect("/select")
 
     return render_template("db_input.html", databases=databases)

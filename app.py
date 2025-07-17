@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect
 from sqlalchemy import create_engine, inspect, MetaData, Table, text
+from collections import deque
+import json
 
 app = Flask(__name__)
 join_graph = {}
@@ -15,7 +17,7 @@ def build_join_graph_and_schema(database):
     metadata = MetaData()
     metadata.reflect(bind=engine)
     inspector = inspect(engine)
-    
+
     all_tables = {
         table_name: Table(table_name, metadata, autoload_with=engine)
         for table_name in inspector.get_table_names()
@@ -25,7 +27,7 @@ def build_join_graph_and_schema(database):
     schema_json = {}
 
     with engine.connect() as conn:
-        for table_name, table_obj in all_tables.items():
+        for table_name in all_tables:
             try:
                 result = conn.execute(text(f"SELECT COUNT(*) FROM `{table_name}`"))
                 row_count = result.scalar()
@@ -53,26 +55,35 @@ def build_join_graph_and_schema(database):
             except Exception as e:
                 print(f"Skipping table `{table_name}` due to error: {e}")
 
+    print("[DEBUG] Join Graph JSON:")
+    print(json.dumps(join_graph_json, indent=2))
     return join_graph_json, schema_json
 
 def generate_joins(tables, join_graph):
     print(f"[DEBUG] Generating joins for tables: {tables}")
+    if not tables or len(tables) == 1:
+        return []
+
+    base_table = tables[0]
     joins = []
-    visited = set()
-    to_visit = [tables[0]]
-    remaining = set(tables[1:])
+    visited = set([base_table])
+    edges = []
+    queue = deque([base_table])
+    needed_tables = set(tables[1:])
 
-    while to_visit:
-        current = to_visit.pop()
-        visited.add(current)
-        for neighbor in join_graph.get(current, {}):
-            if neighbor in remaining:
-                condition = join_graph[current][neighbor]
-                joins.append(f"JOIN {neighbor} ON {condition}")
-                to_visit.append(neighbor)
-                remaining.remove(neighbor)
-    return joins
+    while queue and needed_tables:
+        current = queue.popleft()
+        neighbors = join_graph.get(current, {})
+        for neighbor, condition in neighbors.items():
+            if neighbor not in visited:
+                edges.append((neighbor, condition))
+                visited.add(neighbor)
+                queue.append(neighbor)
+                if neighbor in needed_tables:
+                    needed_tables.remove(neighbor)
 
+    print(f"[DEBUG] Join edges: {edges}")
+    return [f"JOIN {table} ON {condition}" for table, condition in edges]
 
 def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph):
     tables = set()
@@ -83,7 +94,7 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
     tables = list(tables)
 
     print(f"[DEBUG] Tables involved in query: {tables}")
-    print(f"[DEBUG] Join Graph:\n{join_graph}")
+    print(f"[DEBUG] Join Graph:\n{json.dumps(join_graph, indent=2)}")
 
     if not tables:
         return "-- No valid tables found to build query --"
@@ -106,10 +117,10 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
     group_by_clause = f"GROUP BY {', '.join(group_by)}" if group_by else ""
 
     sql = f"""{select_clause}
-            {from_clause}
-            {where_clause}
-            {group_by_clause};""".strip()
-    
+{from_clause}
+{where_clause}
+{group_by_clause};""".strip()
+
     print(f"[DEBUG] Generated SQL:\n{sql}")
     return sql
 
@@ -134,22 +145,23 @@ def select_database():
 
     return render_template("db_input.html", databases=databases)
 
-
 @app.route("/select", methods=["GET"])
 def select():
+    global schema_info
     if not schema_info:
         return redirect("/")
     return render_template("column_selector.html", schema=schema_info)
 
-
 @app.route("/submit", methods=["POST"])
 def submit():
+    global schema_info
     selected_columns = request.form.getlist("columns")
     selected_tables = list(set(col.split('.')[0] for col in selected_columns))
     return render_template("results.html", tables=selected_tables, columns=selected_columns)
 
 @app.route("/build_query", methods=["POST"])
 def build_query():
+    global join_graph 
     selected_columns = request.form.getlist("columns")
     filters = request.form.getlist("filters")
     group_by = request.form.getlist("group_by")
@@ -177,7 +189,5 @@ def build_query():
 
     return render_template("query_result.html", query=sql_query)
 
-
 if __name__ == "__main__":
     app.run(debug=True)
-    

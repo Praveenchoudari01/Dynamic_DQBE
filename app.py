@@ -4,8 +4,10 @@ from collections import deque
 import json
 
 app = Flask(__name__)
+
 join_graph = {}
 schema_info = {}
+current_db = None  # 🔑 holds selected DB name across requests
 
 # ---------- Utility Functions ----------
 
@@ -32,10 +34,8 @@ def build_join_graph_and_schema(database):
         for table_name in all_tables:
             try:
                 result = conn.execute(text(f"SELECT COUNT(*) FROM `{table_name}`"))
-                row_count = result.scalar()
-
-                if row_count == 0:
-                    continue  # Skip empty tables
+                if result.scalar() == 0:
+                    continue  # skip empty tables
 
                 schema_json[table_name] = {
                     "columns": [col["name"] for col in inspector.get_columns(table_name)]
@@ -54,13 +54,9 @@ def build_join_graph_and_schema(database):
             except Exception as e:
                 print(f"Skipping table `{table_name}` due to error: {e}")
 
-    print("[DEBUG] Join Graph JSON:")
-    print(json.dumps(join_graph_json, indent=2))
-
     return join_graph_json, schema_json
 
 def generate_joins(tables, join_graph):
-    print(f"[DEBUG] Generating joins for tables: {tables}")
     if not tables or len(tables) == 1:
         return []
 
@@ -87,7 +83,6 @@ def generate_joins(tables, join_graph):
     joins = []
     for table in tables[1:]:
         if table not in parent:
-            print(f"[WARN] Could not find join path from {base_table} to {table}")
             continue
 
         path = []
@@ -102,7 +97,6 @@ def generate_joins(tables, join_graph):
             condition = join_graph[a][b] if b in join_graph[a] else join_graph[b][a]
             joins.append((b, condition))
 
-    print(f"[DEBUG] Join edges: {joins}")
     return [f"JOIN {table} ON {condition}" for table, condition in joins]
 
 def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph):
@@ -113,14 +107,10 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
             tables.add(expr.split('.')[0])
     tables = list(tables)
 
-    print(f"[DEBUG] Tables involved in query: {tables}")
-    print(f"[DEBUG] Join Graph:\n{json.dumps(join_graph, indent=2)}")
-
     if not tables:
         return "-- No valid tables found to build query --"
 
     base_table = tables[0]
-
     select_parts = list(selected_columns)
     for agg in aggregations:
         part = f"{agg['function']}({agg['column']})"
@@ -141,7 +131,6 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
 {where_clause}
 {group_by_clause};""".strip()
 
-    print(f"[DEBUG] Generated SQL:\n{sql}")
     return sql
 
 # ---------- Routes ----------
@@ -161,9 +150,9 @@ def select_database():
 
     if request.method == "POST":
         dbname = request.form.get("database")
-        global join_graph, schema_info
+        global join_graph, schema_info, current_db
         join_graph, schema_info = build_join_graph_and_schema(dbname)
-        print("[INFO] Database selected:", dbname)
+        current_db = dbname  # 🔑 store selected DB name globally
         return redirect("/select")
 
     return render_template("db_input.html", databases=databases)
@@ -177,14 +166,13 @@ def select():
 
 @app.route("/submit", methods=["POST"])
 def submit():
-    global schema_info
     selected_columns = request.form.getlist("columns")
     selected_tables = list(set(col.split('.')[0] for col in selected_columns))
     return render_template("results.html", tables=selected_tables, columns=selected_columns)
 
 @app.route("/build_query", methods=["POST"])
 def build_query():
-    global join_graph
+    global join_graph, current_db
 
     selected_columns = request.form.getlist("columns")
     filters = request.form.getlist("filters")
@@ -211,8 +199,25 @@ def build_query():
         join_graph=join_graph
     )
 
-    return render_template("query_result.html", query=sql_query)
+    username = 'root'
+    password = '1619'
+    host = 'localhost'
+    port = 3306
+
+    engine = create_engine(f"mysql+pymysql://{username}:{password}@{host}:{port}/{current_db}")
+
+    result_data = []
+    column_names = []
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(sql_query))
+            column_names = result.keys()
+            result_data = result.fetchall()
+    except Exception as e:
+        print(f"[ERROR] Failed to execute query: {e}")
+
+    return render_template("query_result.html", query=sql_query, rows=result_data, columns=column_names)
 
 if __name__ == "__main__":
     app.run(debug=True)
-

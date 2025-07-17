@@ -88,7 +88,6 @@
         <div class="sql-box">
             {{ query }}
         </div>
-
         <h2>📊 Query Results</h2>
         {% if rows and rows|length > 0 %}
         <table>
@@ -103,7 +102,7 @@
                 {% for row in rows %}
                     <tr>
                         {% for col in columns %}
-                            <td>{{ row[col] }}</td>
+                            <td>{{ row[loop.index0] }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -114,7 +113,7 @@
         {% endif %}
 
         <div class="actions">
-            <a href="/">🔁 Start Over</a>
+            <a href="/select">🔁 Start Over</a>
         </div>
     </div>
 </body>

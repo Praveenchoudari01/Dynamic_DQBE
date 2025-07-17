@@ -15,7 +15,7 @@ def build_join_graph_and_schema(database):
     metadata = MetaData()
     metadata.reflect(bind=engine)
     inspector = inspect(engine)
-
+    
     all_tables = {
         table_name: Table(table_name, metadata, autoload_with=engine)
         for table_name in inspector.get_table_names()
@@ -63,12 +63,24 @@ def build_join_graph_and_schema(database):
 
 @app.route("/", methods=["GET", "POST"])
 def select_database():
+    username = 'root'
+    password = '1619'
+    host = 'localhost'
+    port = 3306
+
+    engine = create_engine(f"mysql+pymysql://{username}:{password}@{host}:{port}")
+
+    with engine.connect() as conn:
+        result = conn.execute(text("SHOW DATABASES"))
+        databases = [row[0] for row in result.fetchall()]
+
     if request.method == "POST":
         dbname = request.form.get("database")
         global join_graph, schema_info
         join_graph, schema_info = build_join_graph_and_schema(dbname)
         return redirect("/select")
-    return render_template("db_input.html")
+
+    return render_template("db_input.html", databases=databases)
 
 
 @app.route("/select", methods=["GET"])

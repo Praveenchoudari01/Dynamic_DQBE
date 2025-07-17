@@ -26,8 +26,8 @@
             margin-bottom: 25px;
         }
 
-        input[type="text"] {
-            width: 80%;
+        select {
+            width: 85%;
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ccc;
@@ -53,9 +53,14 @@
 </head>
 <body>
     <div class="container">
-        <h2>🗄️ Enter Database Name</h2>
+        <h2>🗄️ Select a Database</h2>
         <form method="POST">
-            <input type="text" name="database" placeholder="e.g., my_database" required>
+            <select name="database" required>
+                <option value="" disabled selected>-- Choose a database --</option>
+                {% for db in databases %}
+                    <option value="{{ db }}">{{ db }}</option>
+                {% endfor %}
+            </select>
             <br>
             <button type="submit">🔍 Load Tables</button>
         </form>

@@ -1,6 +1,6 @@
 {
     "clients": {
-        "department": "clients.client_id = department.client_id",
+    "department": "clients.client_id = department.client_id",
         "devices": "clients.client_id = devices.client_id",
         "levels": "clients.client_id = levels.client_id",
         "module": "clients.client_id = module.client_id",

@@ -7,6 +7,8 @@ app = Flask(__name__)
 join_graph = {}
 schema_info = {}
 
+# ---------- Utility Functions ----------
+
 def build_join_graph_and_schema(database):
     username = 'root'
     password = '1619'
@@ -39,7 +41,7 @@ def build_join_graph_and_schema(database):
                     "columns": [col["name"] for col in inspector.get_columns(table_name)]
                 }
 
-                join_graph_json[table_name] = {}
+                join_graph_json.setdefault(table_name, {})
                 fks = inspector.get_foreign_keys(table_name)
                 for fk in fks:
                     referred_table = fk["referred_table"]
@@ -47,16 +49,14 @@ def build_join_graph_and_schema(database):
                     to_col = fk["referred_columns"][0]
 
                     join_graph_json[table_name][referred_table] = f"{table_name}.{from_col} = {referred_table}.{to_col}"
-
-                    if referred_table not in join_graph_json:
-                        join_graph_json[referred_table] = {}
-                    if table_name not in join_graph_json[referred_table]:
-                        join_graph_json[referred_table][table_name] = f"{referred_table}.{to_col} = {table_name}.{from_col}"
+                    join_graph_json.setdefault(referred_table, {})
+                    join_graph_json[referred_table][table_name] = f"{referred_table}.{to_col} = {table_name}.{from_col}"
             except Exception as e:
                 print(f"Skipping table `{table_name}` due to error: {e}")
 
     print("[DEBUG] Join Graph JSON:")
     print(json.dumps(join_graph_json, indent=2))
+
     return join_graph_json, schema_json
 
 def generate_joins(tables, join_graph):
@@ -65,25 +65,45 @@ def generate_joins(tables, join_graph):
         return []
 
     base_table = tables[0]
-    joins = []
-    visited = set([base_table])
-    edges = []
-    queue = deque([base_table])
     needed_tables = set(tables[1:])
+    visited = set()
+    queue = deque()
+    parent = {}
+    edge_map = {}
 
-    while queue and needed_tables:
+    queue.append(base_table)
+    visited.add(base_table)
+    parent[base_table] = None
+
+    while queue:
         current = queue.popleft()
-        neighbors = join_graph.get(current, {})
-        for neighbor, condition in neighbors.items():
+        for neighbor, condition in join_graph.get(current, {}).items():
             if neighbor not in visited:
-                edges.append((neighbor, condition))
                 visited.add(neighbor)
                 queue.append(neighbor)
-                if neighbor in needed_tables:
-                    needed_tables.remove(neighbor)
+                parent[neighbor] = current
+                edge_map[(current, neighbor)] = condition
 
-    print(f"[DEBUG] Join edges: {edges}")
-    return [f"JOIN {table} ON {condition}" for table, condition in edges]
+    joins = []
+    for table in tables[1:]:
+        if table not in parent:
+            print(f"[WARN] Could not find join path from {base_table} to {table}")
+            continue
+
+        path = []
+        current = table
+        while parent[current] is not None:
+            prev = parent[current]
+            path.append((prev, current))
+            current = prev
+        path.reverse()
+
+        for a, b in path:
+            condition = join_graph[a][b] if b in join_graph[a] else join_graph[b][a]
+            joins.append((b, condition))
+
+    print(f"[DEBUG] Join edges: {joins}")
+    return [f"JOIN {table} ON {condition}" for table, condition in joins]
 
 def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph):
     tables = set()
@@ -124,6 +144,8 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
     print(f"[DEBUG] Generated SQL:\n{sql}")
     return sql
 
+# ---------- Routes ----------
+
 @app.route("/", methods=["GET", "POST"])
 def select_database():
     username = 'root'
@@ -141,6 +163,7 @@ def select_database():
         dbname = request.form.get("database")
         global join_graph, schema_info
         join_graph, schema_info = build_join_graph_and_schema(dbname)
+        print("[INFO] Database selected:", dbname)
         return redirect("/select")
 
     return render_template("db_input.html", databases=databases)
@@ -161,7 +184,8 @@ def submit():
 
 @app.route("/build_query", methods=["POST"])
 def build_query():
-    global join_graph 
+    global join_graph
+
     selected_columns = request.form.getlist("columns")
     filters = request.form.getlist("filters")
     group_by = request.form.getlist("group_by")

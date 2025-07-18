@@ -108,15 +108,16 @@ def generate_joins(tables, join_graph):
 
     return joins
 
-def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph):
+def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph, having_clauses=None):
     tables = set()
     all_exprs = selected_columns + group_by + [agg['column'] for agg in aggregations] + filters
+    if having_clauses:
+        all_exprs += having_clauses
+
     for expr in all_exprs:
         if '.' in expr:
             tables.add(expr.split('.')[0])
     tables = list(tables)
-
-    print("[DEBUG] Tables involved in query:", tables)
 
     if not tables:
         return "-- No valid tables found to build query --"
@@ -126,24 +127,23 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
     for agg in aggregations:
         part = f"{agg['function']}({agg['column']})"
         if agg.get("alias"):
-            part += f" AS {agg['alias']}"
+            part += f" AS `{agg['alias']}`"
         select_parts.append(part)
 
     select_clause = "SELECT " + ", ".join(select_parts)
     join_clauses = generate_joins(tables, join_graph)
-    if not join_clauses and len(tables) > 1:
-        return f"-- ERROR: Cannot generate JOINs between {tables}. Please check schema. --"
-
     from_clause = f"FROM {base_table}"
     if join_clauses:
         from_clause += "\n" + "\n".join(join_clauses)
     where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
     group_by_clause = f"GROUP BY {', '.join(group_by)}" if group_by else ""
+    having_clause = f"HAVING {' AND '.join(having_clauses)}" if having_clauses else ""
 
     sql = f"""{select_clause}
 {from_clause}
 {where_clause}
-{group_by_clause};""".strip()
+{group_by_clause}
+{having_clause};""".strip()
 
     return sql
 
@@ -191,6 +191,7 @@ def build_query():
     selected_columns = request.form.getlist("columns")
     filters = request.form.getlist("filters")
     group_by = request.form.getlist("group_by")
+    having_clauses = request.form.getlist("having_clauses")
 
     agg_funcs = request.form.getlist("aggregation_function")
     agg_cols = request.form.getlist("aggregation_column")
@@ -210,7 +211,8 @@ def build_query():
         filters=filters,
         group_by=group_by,
         aggregations=aggregations,
-        join_graph=join_graph
+        join_graph=join_graph,
+        having_clauses=having_clauses
     )
 
     username = 'root'
@@ -219,7 +221,6 @@ def build_query():
     port = 3306
 
     engine = create_engine(f"mysql+pymysql://{username}:{password}@{host}:{port}/{current_db}")
-
     result_data = []
     column_names = []
 

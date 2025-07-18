@@ -12,7 +12,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: auto;
             background-color: #ffffff;
             padding: 30px 40px;
@@ -63,6 +63,15 @@
         a:hover, button:hover {
             background-color: #2c80b4;
         }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
@@ -83,16 +92,42 @@
             {% endfor %}
         </ul>
 
-        <div class="actions">
-            <form action="/build_query" method="post">
-                {% for col in columns %}
-                    <input type="hidden" name="columns" value="{{ col }}">
-                {% endfor %}
-                <button type="submit">⚙️ Build SQL Query</button>
-            </form>
+        <form action="/build_query" method="post">
+            {% for col in columns %}
+                <input type="hidden" name="columns" value="{{ col }}">
+            {% endfor %}
 
-            <a href="/">🔁 Start Over</a>
-        </div>
+            <h3>WHERE Filters (e.g., viewer.age > 25):</h3>
+            <input type="text" name="filters" placeholder="Enter filter condition">
+
+            <h3>GROUP BY Columns (comma-separated, e.g., viewer.department_id):</h3>
+            <input type="text" name="group_by" placeholder="Enter group by column(s)">
+
+            <h3>HAVING Conditions (e.g., COUNT(viewer.id) > 1):</h3>
+            <input type="text" name="having_conditions" placeholder="Enter having condition">
+
+            <h3>Aggregations:</h3>
+            <label>Function</label>
+            <select name="aggregation_function">
+                <option value="">-- Select --</option>
+                <option value="COUNT">COUNT</option>
+                <option value="SUM">SUM</option>
+                <option value="AVG">AVG</option>
+                <option value="MIN">MIN</option>
+                <option value="MAX">MAX</option>
+            </select>
+
+            <label>Column</label>
+            <input type="text" name="aggregation_column" placeholder="e.g., viewer.salary">
+
+            <label>Alias (optional)</label>
+            <input type="text" name="aggregation_alias" placeholder="e.g., total_salary">
+
+            <div class="actions">
+                <button type="submit">⚙️ Build SQL Query</button>
+                <a href="/">🔁 Start Over</a>
+            </div>
+        </form>
     </div>
 </body>
 </html>

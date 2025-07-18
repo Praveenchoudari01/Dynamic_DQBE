@@ -59,6 +59,12 @@ def build_join_graph_and_schema(database):
             except Exception as e:
                 print(f"Skipping table `{table_name}` due to error: {e}")
 
+    # 🔧 Manual join fallback if FKs are not defined
+    if "viewer" in all_tables and "department" in all_tables:
+        viewer_to_department = "viewer.department_id = department.id AND viewer.client_id = department.client_id"
+        join_graph_json.setdefault("viewer", {}).setdefault("department", []).append(viewer_to_department)
+        join_graph_json.setdefault("department", {}).setdefault("viewer", []).append(viewer_to_department)
+
     return join_graph_json, schema_json
 
 def generate_joins(tables, join_graph):
@@ -72,6 +78,9 @@ def generate_joins(tables, join_graph):
     queue = deque([base_table])
     parent = {base_table: None}
 
+    print(f"[DEBUG] Generating JOINs for: {tables}")
+    print(f"[DEBUG] Join graph available: {list(join_graph.keys())}")
+
     while queue:
         current = queue.popleft()
         for neighbor in join_graph.get(current, {}):
@@ -84,13 +93,12 @@ def generate_joins(tables, join_graph):
         if table not in parent:
             continue
 
-        path = []
         current = table
         while current and parent[current] is not None:
             prev = parent[current]
             key = tuple(sorted([prev, current]))
             if key in added_pairs:
-                break  # already added
+                break
             conditions = join_graph.get(prev, {}).get(current) or join_graph.get(current, {}).get(prev)
             if conditions:
                 join_condition = " AND ".join(conditions)
@@ -108,6 +116,8 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
             tables.add(expr.split('.')[0])
     tables = list(tables)
 
+    print("[DEBUG] Tables involved in query:", tables)
+
     if not tables:
         return "-- No valid tables found to build query --"
 
@@ -121,6 +131,9 @@ def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_gr
 
     select_clause = "SELECT " + ", ".join(select_parts)
     join_clauses = generate_joins(tables, join_graph)
+    if not join_clauses and len(tables) > 1:
+        return f"-- ERROR: Cannot generate JOINs between {tables}. Please check schema. --"
+
     from_clause = f"FROM {base_table}"
     if join_clauses:
         from_clause += "\n" + "\n".join(join_clauses)
@@ -217,6 +230,7 @@ def build_query():
             result_data = result.fetchall()
     except Exception as e:
         print(f"[ERROR] Failed to execute query: {e}")
+        print("[DEBUG] SQL:", sql_query)
 
     return render_template("query_result.html", query=sql_query, rows=result_data, columns=column_names)
 

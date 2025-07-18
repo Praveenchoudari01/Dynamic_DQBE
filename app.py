@@ -66,40 +66,39 @@ def generate_joins(tables, join_graph):
         return []
 
     base_table = tables[0]
-    visited = set()
-    queue = deque()
-    parent = {}
-    queue.append(base_table)
-    visited.add(base_table)
-    parent[base_table] = None
+    visited = set([base_table])
+    joins = []
+    added_pairs = set()
+    queue = deque([base_table])
+    parent = {base_table: None}
 
     while queue:
         current = queue.popleft()
         for neighbor in join_graph.get(current, {}):
-            if neighbor not in visited:
+            if neighbor not in visited and neighbor in tables:
                 visited.add(neighbor)
                 queue.append(neighbor)
                 parent[neighbor] = current
 
-    joins = []
     for table in tables[1:]:
         if table not in parent:
             continue
 
         path = []
         current = table
-        while parent[current] is not None:
+        while current and parent[current] is not None:
             prev = parent[current]
-            path.append((prev, current))
+            key = tuple(sorted([prev, current]))
+            if key in added_pairs:
+                break  # already added
+            conditions = join_graph.get(prev, {}).get(current) or join_graph.get(current, {}).get(prev)
+            if conditions:
+                join_condition = " AND ".join(conditions)
+                joins.append(f"JOIN {current} ON {join_condition}")
+                added_pairs.add(key)
             current = prev
-        path.reverse()
 
-        for a, b in path:
-            conditions = join_graph[a][b] if b in join_graph[a] else join_graph[b][a]
-            condition = ' AND '.join(conditions) if isinstance(conditions, list) else conditions
-            joins.append((b, condition))
-
-    return [f"JOIN {table} ON {condition}" for table, condition in joins]
+    return joins
 
 def build_dynamic_sql(selected_columns, filters, group_by, aggregations, join_graph):
     tables = set()

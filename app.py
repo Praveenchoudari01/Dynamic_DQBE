@@ -8,7 +8,7 @@ app = Flask(__name__)
 join_graph = {}
 schema_info = {}
 current_db = None
-
+#maim functionality for this code
 # ---------- Utility Functions ----------
 
 def build_join_graph_and_schema(database):
